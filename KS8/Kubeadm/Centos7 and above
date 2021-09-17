@@ -183,8 +183,16 @@ su - kubeadmin
 Set Up Pod Network: A Pod Network allows nodes within the cluster to communicate. There are several available Kubernetes networking options.
 Deploy Calico network as a kubeadmin user.
 $ sudo su - kubeadmin 
+
 Calico Network:
-$ kubectl create -f https://docs.projectcalico.org/v3.9/manifests/calico.yaml
+Refer to https://docs.projectcalico.org/getting-started/kubernetes/self-managed-onprem/onpremises for kubeadm cluster:
+Less than 50 nodes use:
+$ sudo curl https://docs.projectcalico.org/manifests/calico.yaml -O
+[kubeadm@MasterNode ~]$ ls
+calico.yaml
+Run the manifest or customize the manifest as per desired pod network and save the file then run it:
+$ kubectl apply -f calico.yaml
+
 Flannel network: To deploy Flannel network edit the firewall rules to allow traffic for the flannel default port 8285.
 $ sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
