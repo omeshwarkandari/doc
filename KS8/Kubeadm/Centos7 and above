@@ -57,10 +57,11 @@ Install the latest version of Docker Engine and containerd, or go to the next st
 $ yum update && yum install docker-ce-18.06.2.ce or (sudo yum install docker-ce docker-ce-cli containerd.io)
 
 Configure the Docker daemon, in particular to use "systemd" for the management of the container’s cgroups.
-Create /etc/docker directory.
-$ mkdir /etc/docker
+Run the configuration in the /etc/docker and if not existing create the dir docker in /etc ($ mkdir /etc/docker)
+# ls /etc/docker/
+key.json
 
-Configure the Docker daemon
+Configure the Docker daemon:
 cat > /etc/docker/daemon.json <<EOF
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
@@ -75,14 +76,15 @@ cat > /etc/docker/daemon.json <<EOF
 }
 EOF
 
-mkdir -p /etc/systemd/system/docker.service.d
+$ ls /etc/docker/
+daemon.json  key.json
 
+$ mkdir -p /etc/systemd/system/docker.service.d
 Enable and start the docker daemon:
-systemctl daemon-reload
-systemctl restart docker
-systemctl enable docker
-systemctl status docker
-
+$ systemctl daemon-reload
+$ systemctl restart docker
+$ systemctl enable docker
+$ systemctl status docker
 # verify the docker: "docker run hello-world" or "docker ps"
 
 
