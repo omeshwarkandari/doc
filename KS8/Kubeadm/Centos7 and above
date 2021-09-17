@@ -9,12 +9,12 @@ kubeadm join to bootstrap a Kubernetes worker node or an additional control plan
 kubeadm upgrade to upgrade a Kubernetes cluster to a newer version.
 kubeadm reset to revert any changes made to this host by kubeadm init or kubeadm join.
 
-This documentation guides you in setting up a cluster using CentOS with one master node and two worker nodes.
+This documentation guides you in setting up a cluster using CentOS with one master node and two worker nodes where steps 1-9 are common for all the nodes.
 
-Prerequisites:
+Step 1. Prerequisites:
 # System Requirements:
 Master: t2.medium (2 CPUs and 2GB Memory)
-Worker Nodes: t2.micro
+Worker Nodes: t2.micro as test set-up, however, need to upgrade t2.medium on application pod and HPA deployments.
 Ports:
 # Control-Plane Node
 Protocol	Port Number	Description
@@ -38,21 +38,29 @@ UDP	8472	Flannel
 TCP	6781-6784	Weave Net
 UDP	6783-6784	Weave Net
 
-Perform all the commands as root user unless otherwise specified on Master Nodes and all the Worker Nodes.
 
-Step 1. Docker Instalaltion: 
-( To Install Docker on CentOS 7 With Yum we should use Docker repository to ensure upadted docker version is installed.)
-# Install Docker CE
-yum install yum-utils device-mapper-persistent-data lvm2
-# Add Docker repository.
-yum-config-manager \
+
+Step 2. Docker Instalaltion: There are mutliple ways of docekr installation and most common is by setting up the repository.
+
+Set up the repository: 
+Install the yum-utils package (which provides the yum-config-manager utility) & Set up the stable repository.
+$ yum install yum-utils device-mapper-persistent-data lvm2  or (sudo yum install -y yum-utils)
+
+$ yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null 2>&1
+or
+( yum-config-manager \
   --add-repo \
-  https://download.docker.com/linux/centos/docker-ce.repo
-# Install Docker CE
-yum update && yum install docker-ce-18.06.2.ce
-# Create /etc/docker directory.
-mkdir /etc/docker
-# Configure the Docker daemon
+  https://download.docker.com/linux/centos/docker-ce.repo )
+
+Install Docker Engine or now nkown as docker-ce: 
+Install the latest version of Docker Engine and containerd, or go to the next step to install a specific version:
+$ yum update && yum install docker-ce-18.06.2.ce or (sudo yum install docker-ce docker-ce-cli containerd.io)
+
+Configure the Docker daemon, in particular to use "systemd" for the management of the container’s cgroups.
+Create /etc/docker directory.
+$ mkdir /etc/docker
+
+Configure the Docker daemon
 cat > /etc/docker/daemon.json <<EOF
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
@@ -66,34 +74,19 @@ cat > /etc/docker/daemon.json <<EOF
   ]
 }
 EOF
+
 mkdir -p /etc/systemd/system/docker.service.d
-# Restart Docker
+
+Enable and start the docker daemon:
 systemctl daemon-reload
 systemctl restart docker
 systemctl enable docker
 systemctl status docker
 
-Step 2. Adding Kubernetes Packages for CentOS:
-(Kubernetes packages are not available from official CentOS 7 repositories. This step needs to be performed on the Master Node, and each Worker Node you plan on utilizing
-for your container setup. Enter the following command to retrieve the Kubernetes repositories.)
-cat >>/etc/yum.repos.d/kubernetes.repo<<EOF
-[kubernetes]
-name=Kubernetes
-baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-enabled=1
-gpgcheck=1
-repo_gpgcheck=1
-gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-EOF
+# verify the docker: "docker run hello-world" or "docker ps"
 
-Step 3: Install kubelet, kubeadm, and kubectl
-(These 3 basic packages are required to be able to use Kubernetes. Install the following package(s) on each node:)
-sudo yum install -y kubelet kubeadm kubectl
-(Enable and Start kubelet service)
-systemctl enable kubelet
-systemctl start kubelet
 
-Step 4: Set Hostname on Nodes and Hosts file:
+Step 3: Set Hostname on Nodes and Hosts file:
 (To give a unique hostname to each of your nodes)
 hostnamectl set-hostname ndoe-name
 (Make a host entry or DNS record to resolve the hostname for all nodes)
@@ -104,7 +97,8 @@ ipaddress host-name1
 ipaddress host-name2
 EOF
 
-Step 5: Disable Firewall:
+
+Step 4: Disable Firewall:
 (The nodes, containers, and pods need to be able to communicate across the cluster to perform their functions. Firewalld is enabled in CentOS by default on the front-end.
 Add the following ports by entering the listed commands)
 On the Master Node enter:
@@ -123,16 +117,19 @@ or
 systemctl disable firewalld
 systemctl stop firewalld
 
-Step 6: Configuring a bridge network and Update Iptables Settings:
+
+Step 5: Update sysctl settings for Kubernetes networking by enabling the bridge network and update Iptables Settings:
 (A Bridge Container Network Interface (CNI) plug-in enables all the Pods on a node to connect through virtual switch by assigning each pod an IP address on the network 
 and Set the net.bridge.bridge-nf-call-iptables to ‘1’ in sysctl config file to ensure that packets are properly processed by IP tables during filtering and port forwarding)
+
 cat <<EOF > /etc/sysctl.d/k8s.conf
 net.bridge.bridge-nf-call-ip6tables = 1
 net.bridge.bridge-nf-call-iptables = 1
 EOF
 sysctl --system
 
-Step 7: Disable SELinux: 
+
+Step 6: Disable SELinux: 
 (The containers need to access the host filesystem: Security-Enhanced Linux (SELinux) is a Linux kernel security module that provides a mechanism for supporting access 
 control security policies with default restricted all so SELinux needs to be set to permissive mode, which effectively disables its security functions)
 setenforce 0
@@ -141,12 +138,34 @@ or
 sudo setenforce 0
 sudo sed -i ‘s/^SELINUX=enforcing$/SELINUX=permissive/’ /etc/selinux/config
 
-Step 8: Disable swap
+Step 7: Disable swap
 (To enable the kubelet to work properly so that pods are deployed in healthy node rather than nodes maanging its resources to accomodate a pod)
 sed -i '/swap/d' /etc/fstab
 swapoff -a
 
-Node Specific Configurations:
+
+Step 8. Kubernetes Set-up:
+(Kubernetes packages are not available from official CentOS 7 repositories. This step needs to be performed on the Master Node, and each Worker Node you plan on utilizing
+for your container setup. Enter the following command to retrieve the Kubernetes repositories.)
+
+cat >>/etc/yum.repos.d/kubernetes.repo<<EOF
+[kubernetes]
+name=Kubernetes
+baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+
+
+Step 9. Install kubelet, kubeadm, and kubectl:
+(These 3 basic packages are required to be able to use Kubernetes. Install the following package(s) on each node:)
+sudo yum install -y kubelet kubeadm kubectl
+(Enable and Start kubelet service)
+systemctl enable kubelet
+systemctl start kubelet
+
 
 Master Node: Initialize Kubernetes Cluster
 
@@ -174,6 +193,7 @@ sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Do
 
 Cluster join command:
 kubeadm token create --print-join-command
+
 
 On Worker Node:
 #Add worker nodes to cluster by using the output from kubeadm token create command in previous step from the master server and run here.
