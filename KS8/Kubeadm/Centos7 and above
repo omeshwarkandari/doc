@@ -131,22 +131,13 @@ EOF
 sysctl --system
 
 
-Step 6: Disable SELinux: 
-(The containers need to access the host filesystem: Security-Enhanced Linux (SELinux) is a Linux kernel security module that provides a mechanism for supporting access 
-control security policies with default restricted all so SELinux needs to be set to permissive mode, which effectively disables its security functions)
-setenforce 0
-sed -i --follow-symlinks 's/^SELINUX=enforcing/SELINUX=disabled/' /etc/sysconfig/selinux
-or
-sudo setenforce 0
-sudo sed -i ‘s/^SELINUX=enforcing$/SELINUX=permissive/’ /etc/selinux/config
-
-Step 7: Disable swap
+Step 6: Disable swap
 (To enable the kubelet to work properly so that pods are deployed in healthy node rather than nodes maanging its resources to accomodate a pod)
 sed -i '/swap/d' /etc/fstab
 swapoff -a
 
 
-Step 8. Kubernetes Set-up:
+Step 7. Kubernetes Set-up:
 (Kubernetes packages are not available from official CentOS 7 repositories. This step needs to be performed on the Master Node, and each Worker Node you plan on utilizing
 for your container setup. Enter the following command to retrieve the Kubernetes repositories.)
 
@@ -159,6 +150,10 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
 EOF
+
+Step 8: # Set SELinux in permissive mode (effectively disabling it) 
+sudo setenforce 0
+sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
 
 
 Step 9. Install kubelet, kubeadm, and kubectl:
