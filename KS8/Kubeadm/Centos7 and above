@@ -54,14 +54,16 @@ or
 
 Install Docker Engine or now nkown as docker-ce: 
 Install the latest version of Docker Engine and containerd, or go to the next step to install a specific version:
-$ yum update && yum install docker-ce-18.06.2.ce or (sudo yum install docker-ce docker-ce-cli containerd.io)
+$ yum update -y && yum install docker-ce-18.06.2.ce -y    or (sudo yum install docker-ce docker-ce-cli containerd.io)
+$ systemctl enable docker
+$ systemctl status docker
+# verify the docker: "docker run hello-world" or "docker ps"
 
-Configure the Docker daemon, in particular to use "systemd" for the management of the container’s cgroups.
-Run the configuration in the /etc/docker and if not existing create the dir docker in /etc ($ mkdir /etc/docker)
+Configure the Docker daemon: To use in particular "systemd" for the management of the container’s cgroups.
 # ls /etc/docker/
 key.json
+if /etc/docker does not exist then create the dir docker in /etc ($ mkdir /etc/docker)
 
-Configure the Docker daemon:
 cat > /etc/docker/daemon.json <<EOF
 {
   "exec-opts": ["native.cgroupdriver=systemd"],
@@ -162,6 +164,7 @@ $ sudo yum install -y kubelet kubeadm kubectl
 (Enable and Start kubelet service)
 $ systemctl enable kubelet
 $ systemctl start kubelet
+systemctl status kubelet
 
 
 Master Node: Initialize Kubernetes Cluster
@@ -196,12 +199,14 @@ $ kubectl apply -f calico.yaml
 Flannel network: To deploy Flannel network edit the firewall rules to allow traffic for the flannel default port 8285.
 $ sudo kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 
+
+
+Worket Node Configurations:
+Repeat steps 1-9 except the kubeadm init
+Join the worker nodes to the master node using the clustr join command>
 Cluster join command:
 $ kubeadm token create --print-join-command
-
-
-On Worker Node:
-#Add worker nodes to cluster by using the output from kubeadm token create command in previous step from the master server and run here.
+e.g kubeadm join 172.31.93.164:6443 --token 7q74gj.rdttu5jyo84cfboe \ --discovery-token-ca-cert-hash sha256:1f2b4c24ebdd7d5d0a1f320ce1bd04b62b975e6d4a6c403d89a6642982386581
 
 #Verifying the cluster To Get Nodes status
 kubectl get nodes
