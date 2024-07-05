@@ -93,10 +93,19 @@ resource "aws_route_table_association" "public-rt-asso3" {
   route_table_id = aws_route_table.public-rt.id
 }
 
-resource "aws_eip" "nat-eip" {  
-  vpc = "true"  
+# EIP
+resource "aws_eip" "nat-eip" {
+  count = length(var.azs)
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.namespace}-eip-${count.index + 1}"
+  }
+
+  depends_on = [aws_internet_gateway.demo-igw]
 }
 
+# Nat Gateway
 resource "aws_nat_gateway" "demo-nat" {
   allocation_id = aws_eip.nat-eip.id
   subnet_id = aws_subnet.public-subnet1.id
