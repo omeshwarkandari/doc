@@ -26,8 +26,7 @@
         name: httpd
         state: started
 
+Notify and handlers: If we run a playbook created to install and run httpd service then every time we playbook for fresh install or change in configuration then,
+                     it will start httpd service resulting into outage. To avoid it we may introduce notify and handlers so that the handler will execute only
+                     when notified.
 
-
-Note: Whenever we run this playbbok irrespective of what the httpd service will restart whoch might trigger service outage.
-      To avoid this we introduce notify and handlers where the cript in handler will execute only when notified.
-      This way we can avoid restart for running httpd and trigger restart if its fresh install or change in configuration
